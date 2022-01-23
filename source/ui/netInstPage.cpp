@@ -80,7 +80,7 @@ namespace inst::ui {
     }
 
     void netInstPage::startNetwork() {
-        this->butText->SetText("inst.net.buttons"_lang);
+        this->butText->SetText("inst.net.buttons"_lang + "    \ue0f0 Install From HTTP Directory");
         this->menu->SetVisible(false);
         this->menu->ClearItems();
         this->infoImage->SetVisible(true);

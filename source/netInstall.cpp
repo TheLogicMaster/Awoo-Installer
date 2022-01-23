@@ -264,6 +264,58 @@ namespace netInstStuff{
                     inst::ui::mainApp->CreateShowDialog("inst.net.help.title"_lang, "inst.net.help.desc"_lang, {"common.ok"_lang}, true);
                 }
 
+                if (kDown & HidNpadButton_Minus) {
+                    std::string url = inst::util::softwareKeyboard("inst.net.url.hint"_lang, inst::config::httpIndexUrl, 500);
+                    inst::config::httpIndexUrl = url;
+                    inst::config::setConfig();
+                    std::string response;
+                    
+                    if (inst::util::formatUrlString(url) == "" || url == "https://" || url == "http://")
+                        inst::ui::mainApp->CreateShowDialog("inst.net.url.invalid"_lang, "", {"common.ok"_lang}, false);
+                    else {
+                        response = inst::curl::downloadToBuffer(url);
+                        if (url[url.size() - 1] != '/')
+                            url += '/';
+                    }
+
+                    if (!response.empty()) {
+                        if (response[0] == '{')              
+                            try {
+                                nlohmann::json j = nlohmann::json::parse(response);
+                                for (const auto &file : j["files"])
+                                    urls.push_back(file["url"]);
+                                return urls;
+                            } catch (const nlohmann::detail::exception& ex) {
+                                LOG_DEBUG("Failed to parse JSON\n");
+                            }
+                        else if (response[0] == '<') {
+                            std::size_t index = 0;
+                            while (index < response.size()) {
+                                std::string link;
+                                auto found = response.find("href=\"", index);
+                                if (found == std::string::npos)
+                                    break;
+                                index = found + 6;
+                                while (index < response.size()) {
+                                    if (response[index] == '"') {
+                                        if (link.find("../") == std::string::npos)
+                                            urls.push_back(url + link);
+                                        break;
+                                    }
+                                    link += response[index++];
+                                }
+
+                            }
+                            if (urls.size() > 0)
+                                return urls;
+                            LOG_DEBUG("Failed to parse games from HTML\n");
+                        }
+                    } else {
+                        LOG_DEBUG("Failed to get game list\n");
+                    }
+                    inst::ui::mainApp->CreateShowDialog("Failed to fetch game list", "Something went wrong...", {"common.ok"_lang}, true);
+                }
+
                 struct sockaddr_in client;
                 socklen_t clientLen = sizeof(client);
 
